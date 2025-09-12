@@ -1,0 +1,21 @@
+[project]
+name = "rpsd-ingest"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "caipirginka", email = "github@oicom.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "dapr>=1.15.0",
+    "dapr-ext-workflow>=1.15.0",
+    "fastapi[standard]>=0.112.0,<0.113.0",
+]
+
+[project.scripts]
+hello = "rpsd_ingest.hello:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
