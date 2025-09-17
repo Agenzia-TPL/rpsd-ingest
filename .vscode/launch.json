@@ -5,12 +5,12 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "hello",
+            "name": "app",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
             "cwd": "${workspaceFolder}/src/rpsd_ingest",
-            "program": "hello.py",
+            "program": "app.py",
             "justMyCode": false
         }
     ]
