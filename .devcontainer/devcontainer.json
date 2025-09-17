@@ -43,9 +43,11 @@
 				"remote.restoreForwardedPorts": false,
 				//"python.defaultInterpreterPath": "/usr/local/bin/python"
 				//"python.defaultInterpreterPath": "${containerEnv:VIRTUAL_ENV}/bin/python",
-				"python.defaultInterpreterPath": "/workspaces/${localWorkspaceFolderBasename}/.venv/bin/python",
-				"python.languageServer": "Jedi",
+				//"python.defaultInterpreterPath": "/workspaces/${localWorkspaceFolderBasename}/.venv/bin/python",
+				"python.defaultInterpreterPath": "/workspaces/${localWorkspaceFolderBasename}/.venv",
+				//"python.languageServer": "Jedi",
 				"python.analysis.autoImportCompletions": true,
+				"python.analysis.typeCheckingMode": "basic",
 				"python.testing.autoTestDiscoverOnSaveEnabled": false,
 				"python.testing.unittestEnabled": true,
 				"python.testing.unittestArgs": [
