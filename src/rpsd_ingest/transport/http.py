@@ -8,7 +8,8 @@ import urllib.request
 import urllib.parse
 import zipfile
 
-from rpsd_ingest.storage.s3 import save_to_s3
+from rpsd_ingest.storage import storage_provider
+from rpsd_ingest.config import config
 
 
 logger = logging.getLogger()
@@ -31,7 +32,7 @@ def validate_request(event):
     if not api_key:
         api_key = headers.get('x-api-key') or headers.get('X-API-Key')
 
-    expected_key = os.environ.get('API_KEY')
+    expected_key = config['api_key']
 
     if not expected_key or api_key != expected_key:
         raise PermissionError('Unauthorized - Invalid API key')
@@ -205,7 +206,7 @@ def handle_attachment(event, who=None, what=None):
         raise Exception('No file found in attachment')
 
     decompressed_content = decompress_content(file_content, filename)
-    return save_to_s3(decompressed_content, filename, content_type or 'application/xml', who=who, what=what)
+    return storage_provider.save(decompressed_content, filename, content_type or 'application/xml', who=who, what=what)
 
 
 def handle_body(event, who=None, what=None):
@@ -237,7 +238,7 @@ def handle_body(event, who=None, what=None):
         # Attempt to decompress based on magic bytes if not specified
         decompressed_content = decompress_content(file_content, None)
 
-    return save_to_s3(decompressed_content, filename, content_type, who=who, what=what)
+    return storage_provider.save(decompressed_content, filename, content_type, who=who, what=what)
 
 
 def handle_url(where_url, who=None, what=None):
@@ -254,7 +255,7 @@ def handle_url(where_url, who=None, what=None):
             filename = os.path.basename(parsed_url.path) or 'downloaded_file'
             content_type = response.headers.get(
                 'Content-Type', 'application/xml')
-            return save_to_s3(file_content, filename, content_type, source_url=where_url, who=who, what=what)
+            return storage_provider.save(file_content, filename, content_type, source_url=where_url, who=who, what=what)
         else:
             raise Exception(
                 f'Failed to download from URL: Status {response.status}')
