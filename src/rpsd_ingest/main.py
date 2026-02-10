@@ -197,6 +197,9 @@ async def ingest_data(request: Request):
             response_data["metadata"]["content_length"] = (
                 result.storage_metadata.content_length
             )
+            response_data["metadata"]["content_type"] = (
+                result.storage_metadata.content_type
+            )
 
         logger.info(
             "Successfully processed message: who=%s, what=%s, url=%s, forwarded=%s",
