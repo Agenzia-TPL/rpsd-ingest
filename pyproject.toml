@@ -1,22 +1,63 @@
 [project]
 name = "rpsd-ingest"
 version = "0.1.0"
-description = "Add your description here"
+description = "Ingest service of the Rapsodia project"
 readme = "README.md"
 authors = [
-    { name = "caipirginka", email = "github@oicom.com" }
+    { name = "caipirginka" }
 ]
 requires-python = ">=3.13"
+
 dependencies = [
-    "boto3==1.39.14",
-    "dapr>=1.15.0",
-    "dapr-ext-workflow>=1.15.0",
-    "fastapi[standard]>=0.112.0,<0.113.0",
+    "rpsd-transport[kafka]",
+    "fastapi[standard]>=0.116.0,<0.117.0",
 ]
 
-[project.scripts]
-app = "rpsd_ingest.app:main"
+[tool.uv.sources]
+rpsd-transport = { path = "../rpsd-commons/packages/rpsd-transport" }
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.13.1",
+    "pytest>=8.0.0",
+    "moto[s3]>=5.0.0",
+    "respx>=0.20.0",
+    "hypothesis>=6.0.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-mock>=3.11.0",
+]
+
+[tool.ruff]
+target-version = "py313"
+src = ["packages/*/src", "examples/*/src"]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "W"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"packages/*/examples/*" = ["N999"]
+"examples/*/src/*" = ["N999"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["packages/*/tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests as integration tests",
+    "benchmark: marks tests as performance benchmarks",
+    "slow: marks tests as slow-running tests",
+    "property: marks tests as property-based tests",
+    "unit: marks tests as unit tests",
+]

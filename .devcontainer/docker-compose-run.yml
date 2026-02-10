@@ -5,19 +5,3 @@ services:
       service: rpsd-ingest
     command: ["uv", "run", "--directory", "/workspaces/rpsd-ingest", "app"]
     #command: /bin/sh -c "sleep 0s; echo 'PIPPO!!!'"
-
-  ############################
-  # Dapr sidecar
-  ############################
-  rpsd-ingest-dapr:
-    extends:
-      file: ./docker-compose-base.yml
-      service: rpsd-ingest-dapr
-
-############################
-# Network between containers
-############################
-networks:
-  rpsd-dapr:
-    external: true
-    name: rpsd-dapr

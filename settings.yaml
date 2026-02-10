@@ -1,8 +1,0 @@
-storage:
-  provider: fs
-  fs:
-    base_path: /tmp/ingested
-  # s3:
-  #   bucket_name: your-s3-bucket-name
-
-api_key: "1234"
