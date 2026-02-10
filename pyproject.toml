@@ -20,6 +20,9 @@ rpsd-transport = { path = "../rpsd-commons/packages/rpsd-transport" }
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[project.scripts]
+app = "rpsd_ingest.main:run"
+
 [dependency-groups]
 dev = [
     "ruff>=0.13.1",

@@ -5,12 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "app",
+            "name": "Run Current Python File with uv",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "program": "${file}",
+            "cwd": "${workspaceFolder}",
+            "justMyCode": false,
+            "console": "integratedTerminal"
+        },
+        {
+            "name": "main",
             "type": "debugpy",
             "request": "launch",
             "python": "${workspaceFolder}/.venv/bin/python",
             "cwd": "${workspaceFolder}/src/rpsd_ingest",
-            "program": "app.py",
+            "program": "main.py",
             "justMyCode": false
         }
     ]
