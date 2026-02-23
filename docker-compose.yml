@@ -8,8 +8,8 @@ services:
     container_name: rpsd-ingest
     restart: unless-stopped
     command: uv run server
-#    ports:
-#      - "80:8000"
+    ports:
+      - "8888:8000"
     volumes:
       - ./.env.base:/app/.env.base:ro
       - ./.env:/app/.env:ro
