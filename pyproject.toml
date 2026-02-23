@@ -25,7 +25,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-app = "rpsd_ingest.main:run"
+server = "rpsd_ingest.main:run"
 
 [dependency-groups]
 dev = [
