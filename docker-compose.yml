@@ -3,6 +3,8 @@ services:
     build:
       context: .
       dockerfile: ./Dockerfile
+      additional_contexts:
+        rpsd-commons: ../rpsd-commons
     container_name: rpsd-ingest
     restart: unless-stopped
     command: uv run server
