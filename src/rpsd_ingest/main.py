@@ -4,7 +4,8 @@ FastAPI application demonstrating HTTPCarrier with IngestProcessor.
 This example shows how to:
 - Use HTTPCarrier.receive() to parse incoming messages
 - Use IngestProcessor to save content to storage
-- Optionally forward to Kafka after storage
+- Optionally forward to Kafka/RabbitMQ after storage
+- Optionally invoke a Prefect Flow after storage
 - Support both inline (JSON) and outline (headers/query) metadata formats
 - Validate API keys
 - Configure storage providers (FS or S3) via settings
@@ -13,6 +14,8 @@ This example shows how to:
 
 import hashlib
 import logging
+import os
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -35,17 +38,25 @@ from rpsd_transport.transformers import with_custom_metadata
 from rpsd_ingest.auth import validate_api_key
 from rpsd_ingest.settings import AppSettings
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-)
+# Configure the module logger directly — never touch the root logger.
+# basicConfig and root-logger setup are no-ops when uvicorn has already
+# configured logging, so we own our handler explicitly.  propagate=False
+# prevents double-printing when a root handler also exists (e.g. uvicorn's).
+_log_level = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
 logger = logging.getLogger(__name__)
+logger.setLevel(_log_level)
+if not logger.handlers:
+    _handler = logging.StreamHandler()
+    _handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+    )
+    logger.addHandler(_handler)
+    logger.propagate = False
 
 # Initialize settings and dependencies
 settings = AppSettings()
 storage_provider = get_storage_provider(settings.storage)
-carrier = HTTPCarrier(timeout=30.0)
+carrier = HTTPCarrier(timeout=30)
 
 # Create forward carrier if configured
 forward_carrier = None
@@ -53,6 +64,7 @@ if settings.forward.carrier:
     forward_settings = TransportSettings(
         carrier=settings.forward.carrier,
         kafka=settings.forward.kafka,
+        rabbitmq=settings.forward.rabbitmq,
     )
     forward_carrier = get_carrier(forward_settings)
     logger.info(
@@ -85,6 +97,31 @@ def enrich_forward_metadata(meta: dict[str, Any], content: bytes) -> dict[str, A
         **meta,
         "pre_forward": True,
     }
+
+
+def resolve_flow_deployment(
+    who: str,
+    what: str,
+    default_deployment: str,
+) -> str:
+    """Resolve which Prefect Flow deployment to invoke.
+
+    In production, this function would determine the flow
+    based on the who/what combination — e.g. via a lookup
+    table, database query, or config mapping.
+
+    For this example, it returns the configured default.
+
+    Args:
+        who: The entity identifier from the message.
+        what: The content category from the message.
+        default_deployment: The configured default deployment
+            name (from settings).
+
+    Returns:
+        Deployment name in "flow-name/deployment-name" format.
+    """
+    return default_deployment
 
 
 # Create processor with optional forwarding and metadata enrichment
@@ -174,39 +211,106 @@ async def ingest_data(request: Request):
         validate_api_key(request, settings.transport.api_key)
 
         # Receive and parse message via carrier
+        t0 = time.perf_counter()
         message = await carrier.receive(request)
+        t_receive = time.perf_counter() - t0
+        logger.debug("carrier.receive: %.3fs", t_receive)
 
         # Process: resolve heavy content + save to storage
+        t1 = time.perf_counter()
         result = await processor.process_async(message)
+        t_process = time.perf_counter() - t1
+        logger.debug("processor.process_async: %.3fs", t_process)
 
-        # Build response with storage URL and forward status
+        # Optionally invoke a Prefect Flow deployment
+        flow_invoked = False
+        t_flow = 0.0
+        if settings.flow.deployment and not result.deduplicated:
+            try:
+                from rpsd_flow import run_flow_async
+
+                deployment = resolve_flow_deployment(
+                    message.who,
+                    message.what,
+                    settings.flow.deployment,
+                )
+
+                # Build message with storage URL as 'where'
+                # so the flow knows where content was saved.
+                flow_message = result.message.model_copy(
+                    update={
+                        "metadata": (
+                            result.message.metadata.model_copy(
+                                update={
+                                    "where": result.storage_url,
+                                }
+                            )
+                        ),
+                    },
+                )
+
+                # timeout=0 (default) is fire-and-forget: a single
+                # HTTP POST to the Prefect API; returns before the
+                # flow even starts. timeout=None waits indefinitely;
+                # a positive float waits up to that many seconds.
+                t2 = time.perf_counter()
+                flow_run = await run_flow_async(
+                    deployment,
+                    flow_message,
+                    settings.flow.timeout,
+                )
+                t_flow = time.perf_counter() - t2
+                flow_invoked = True
+                logger.info(
+                    "Flow invoked: %s (run id=%s, state=%s)",
+                    deployment,
+                    flow_run.id,
+                    flow_run.state_name,
+                )
+                logger.debug("run_flow_async: %.3fs", t_flow)
+            except Exception as e:
+                logger.error(
+                    "Failed to invoke flow %s: %s",
+                    settings.flow.deployment,
+                    e,
+                )
+
+        # Build response
         response_data = {
             "success": True,
             "message": "Content received and stored",
-            "storage_url": result.storage_url,
+            "deduplicated": result.deduplicated,
             "forwarded": result.forwarded,
+            "flow_invoked": flow_invoked,
             "metadata": {
                 "who": message.who,
                 "what": message.what,
                 "content_type": message.metadata.content_type,
             },
+            "storage": (
+                result.storage_metadata.model_dump()
+                if result.storage_metadata
+                else None
+            ),
         }
 
-        if result.storage_metadata is not None:
-            response_data["metadata"]["object_id"] = result.storage_metadata.object_id
-            response_data["metadata"]["content_length"] = (
-                result.storage_metadata.content_length
-            )
-            response_data["metadata"]["content_type"] = (
-                result.storage_metadata.content_type
-            )
-
+        t_total = time.perf_counter() - t0
         logger.info(
-            "Successfully processed message: who=%s, what=%s, url=%s, forwarded=%s",
+            "Successfully processed message: "
+            "who=%s, what=%s, url=%s, "
+            "deduplicated=%s, forwarded=%s, flow_invoked=%s | "
+            "timing: receive=%.3fs process=%.3fs flow=%.3fs"
+            " total=%.3fs",
             message.who,
             message.what,
             result.storage_url,
+            result.deduplicated,
             result.forwarded,
+            flow_invoked,
+            t_receive,
+            t_process,
+            t_flow,
+            t_total,
         )
 
         return JSONResponse(status_code=201, content=response_data)
@@ -237,6 +341,7 @@ async def health_check():
         "storage_provider": settings.storage.provider,
         "forward_carrier": settings.forward.carrier,
         "forward_recipient": forward_recipient,
+        "flow_deployment": settings.flow.deployment,
     }
 
 
@@ -245,14 +350,23 @@ def run():
     import uvicorn
 
     logger.info("Starting RPSD Ingest Example application")
-    logger.info(f"Storage provider: {settings.storage.provider}")
+    logger.info("Storage provider: %s", settings.storage.provider)
     if settings.forward.carrier:
         logger.info(
-            f"Forward carrier: {settings.forward.carrier} -> "
-            f"{settings.forward.recipient}"
+            "Forward carrier: %s -> %s",
+            settings.forward.carrier,
+            settings.forward.recipient,
         )
     else:
         logger.info("Forward carrier: disabled")
+    if settings.flow.deployment:
+        logger.info(
+            "Flow invocation: %s (timeout=%s)",
+            settings.flow.deployment,
+            settings.flow.timeout,
+        )
+    else:
+        logger.info("Flow invocation: disabled")
 
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
 

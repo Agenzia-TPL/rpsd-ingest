@@ -9,12 +9,16 @@ authors = [
 requires-python = ">=3.13"
 
 dependencies = [
-    "rpsd-transport[kafka]",
+    "rpsd-transport[kafka,rabbitmq]",
+    "rpsd-storage",
+    "rpsd-flow",
     "fastapi[standard]>=0.116.0,<0.117.0",
 ]
 
 [tool.uv.sources]
-rpsd-transport = { path = "../rpsd-commons/packages/rpsd-transport" }
+rpsd-transport = { path = "../rpsd-commons/packages/rpsd-transport", editable = true }
+rpsd-storage = { path = "../rpsd-commons/packages/rpsd-storage", editable = true }
+rpsd-flow = { path = "../rpsd-commons/packages/rpsd-flow", editable = true }
 
 [build-system]
 requires = ["hatchling"]
