@@ -351,6 +351,7 @@ def run():
 
     logger.info("Starting RPSD Ingest Example application")
     logger.info("Storage provider: %s", settings.storage.provider)
+
     if settings.forward.carrier:
         logger.info(
             "Forward carrier: %s -> %s",
@@ -359,6 +360,7 @@ def run():
         )
     else:
         logger.info("Forward carrier: disabled")
+
     if settings.flow.deployment:
         logger.info(
             "Flow invocation: %s (timeout=%s)",
@@ -367,6 +369,11 @@ def run():
         )
     else:
         logger.info("Flow invocation: disabled")
+
+    logger.info(
+        "Compare before save: %s",
+        "enabled" if settings.storage.compare_before_save else "disabled",
+    )
 
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
 
