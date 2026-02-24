@@ -99,6 +99,37 @@ def enrich_forward_metadata(meta: dict[str, Any], content: bytes) -> dict[str, A
     }
 
 
+def resolve_compare_before_save(what: str) -> bool | None:
+    """Determine per-call deduplication behaviour based on content category.
+
+    In production this would typically be a config mapping or a database
+    lookup. Here it is a simple hard-coded classification:
+
+    - True  → deduplicate: periodic reports / snapshots that change rarely.
+              Identical re-submissions are silently skipped.
+    - False → always write: audit-style records that must never be dropped,
+              even when content is identical.
+    - None  → defer to the storage provider's instance-level
+              compare_before_save setting (the default).
+
+    Args:
+        what: Content category identifier from the transport message.
+
+    Returns:
+        True, False, or None to pass as compare_before_save to process_async.
+    """
+    # Deduplicate: skip identical re-submissions for these categories
+    dedup_what = {"gtfs"}
+    # Always write: every submission must be stored, even if identical
+    force_save_what = {"siri"}
+
+    if what in dedup_what:
+        return True
+    if what in force_save_what:
+        return False
+    return None  # use instance-level default
+
+
 def resolve_flow_deployment(
     who: str,
     what: str,
@@ -216,9 +247,15 @@ async def ingest_data(request: Request):
         t_receive = time.perf_counter() - t0
         logger.debug("carrier.receive: %.3fs", t_receive)
 
+        # Resolve deduplication policy server-side from the content category.
+        # Clients never control this — the mapping lives here on the server.
+        compare_before_save = resolve_compare_before_save(message.what)
+
         # Process: resolve heavy content + save to storage
         t1 = time.perf_counter()
-        result = await processor.process_async(message)
+        result = await processor.process_async(
+            message, compare_before_save=compare_before_save
+        )
         t_process = time.perf_counter() - t1
         logger.debug("processor.process_async: %.3fs", t_process)
 
@@ -351,7 +388,6 @@ def run():
 
     logger.info("Starting RPSD Ingest Example application")
     logger.info("Storage provider: %s", settings.storage.provider)
-
     if settings.forward.carrier:
         logger.info(
             "Forward carrier: %s -> %s",
@@ -360,7 +396,6 @@ def run():
         )
     else:
         logger.info("Forward carrier: disabled")
-
     if settings.flow.deployment:
         logger.info(
             "Flow invocation: %s (timeout=%s)",
@@ -369,11 +404,6 @@ def run():
         )
     else:
         logger.info("Flow invocation: disabled")
-
-    logger.info(
-        "Compare before save: %s",
-        "enabled" if settings.storage.compare_before_save else "disabled",
-    )
 
     uvicorn.run(app, host="0.0.0.0", port=8000, log_level="info")
 
