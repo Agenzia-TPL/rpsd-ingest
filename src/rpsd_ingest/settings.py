@@ -73,7 +73,10 @@ class AppSettings(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="APP__",
         env_nested_delimiter="__",
-        env_file=".env",
+        env_file=[
+            ".env.base",  # Scenario defaults (lower priority)
+            ".env",  # User overrides (higher priority)
+        ],
         env_file_encoding="utf-8",
         extra="ignore",
     )
