@@ -43,7 +43,12 @@ jobs:
 
       - name: Test
         working-directory: rpsd-ingest
-        run: uv run pytest -m "not integration"
+        # Exit code 5 = no tests collected — acceptable while the test suite is being built.
+        # Any other non-zero exit code is a real failure.
+        run: |
+          uv run pytest -m "not integration"
+          ret=$?
+          if [ $ret -ne 0 ] && [ $ret -ne 5 ]; then exit $ret; fi
 
   build-and-push:
     name: Build & Push
