@@ -5,7 +5,7 @@ on:
   pull_request:
 
 env:
-  IMAGE_NAME: ghcr.io/rapsodia/rpsd-ingest
+  IMAGE_NAME: ghcr.io/agenzia-tpl/rpsd-ingest
 
 jobs:
   test:
@@ -24,7 +24,7 @@ jobs:
       - name: Check out rpsd-commons
         uses: actions/checkout@v4
         with:
-          repository: Rapsodia/rpsd-commons
+          repository: Agenzia-TPL/rpsd-commons
           token: ${{ secrets.GH_REPO_TOKEN }}
           path: rpsd-commons
 
@@ -63,7 +63,7 @@ jobs:
       - name: Check out rpsd-commons
         uses: actions/checkout@v4
         with:
-          repository: Rapsodia/rpsd-commons
+          repository: Agenzia-TPL/rpsd-commons
           token: ${{ secrets.GH_REPO_TOKEN }}
           path: rpsd-commons
 
