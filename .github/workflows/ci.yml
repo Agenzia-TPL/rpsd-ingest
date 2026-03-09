@@ -44,11 +44,9 @@ jobs:
       - name: Test
         working-directory: rpsd-ingest
         # Exit code 5 = no tests collected — acceptable while the test suite is being built.
-        # Any other non-zero exit code is a real failure.
-        run: |
-          uv run pytest -m "not integration"
-          ret=$?
-          if [ $ret -ne 0 ] && [ $ret -ne 5 ]; then exit $ret; fi
+        # The || pattern is used instead of capturing $? because GitHub Actions runs bash
+        # with -e (exit on error), which would cause the shell to exit before $? is read.
+        run: uv run pytest -m "not integration" || [ $? -eq 5 ]
 
   build-and-push:
     name: Build & Push
