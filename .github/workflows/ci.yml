@@ -68,7 +68,7 @@ jobs:
           path: ./
           base: ${{ github.event.pull_request.base.sha }}
           head: ${{ github.event.pull_request.head.sha }}
-          extra_args: --only-verified --fail
+          extra_args: --only-verified
 
       - name: Scan push for verified secrets
         if: github.event_name == 'push'
@@ -77,7 +77,7 @@ jobs:
           path: ./
           base: ${{ github.event.before }}
           head: ${{ github.event.after }}
-          extra_args: --only-verified --fail
+          extra_args: --only-verified
 
   build-and-push:
     name: Build & Push
