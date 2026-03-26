@@ -27,6 +27,7 @@ jobs:
           repository: Agenzia-TPL/rpsd-commons
           token: ${{ secrets.GH_REPO_TOKEN }}
           path: rpsd-commons
+          persist-credentials: false
 
       - name: Set up uv
         uses: astral-sh/setup-uv@v5
@@ -69,6 +70,7 @@ jobs:
           repository: Agenzia-TPL/rpsd-commons
           token: ${{ secrets.GH_REPO_TOKEN }}
           path: rpsd-commons
+          persist-credentials: false
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

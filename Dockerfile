@@ -6,9 +6,9 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 # Set working directory
 WORKDIR /app
 
-# Pull rpsd-commons packages from the named build context
-# (resolves ../rpsd-commons/... from /app → /rpsd-commons/... inside the image)
-COPY --from=rpsd-commons . /rpsd-commons/
+# Pull only the packages/ subdirectory from rpsd-commons (named build context).
+# Excludes .git/ and other root files to avoid leaking credentials into image layers.
+COPY --from=rpsd-commons packages/ /rpsd-commons/packages/
 
 # Copy dependency files first (for better layer caching)
 COPY pyproject.toml uv.lock README.md ./
