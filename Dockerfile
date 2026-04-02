@@ -29,5 +29,10 @@ ENV PATH="/app/.venv/bin:$PATH"
 COPY entrypoint.sh ./
 RUN chmod +x entrypoint.sh
 
-# Set entrypoint (command comes from docker-compose.yml)
+# Build sources label for smart rebuild detection
+ARG RPSD_BUILD_SOURCES="unknown"
+LABEL rpsd.build.sources="${RPSD_BUILD_SOURCES}"
+
+# Set entrypoint and default command
 ENTRYPOINT ["./entrypoint.sh"]
+CMD ["server"]
