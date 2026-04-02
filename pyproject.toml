@@ -1,6 +1,6 @@
 [project]
 name = "rpsd-ingest"
-version = "0.2.0"
+version = "0.2.1"
 description = "Ingest service of the Rapsodia project"
 readme = "README.md"
 authors = [
