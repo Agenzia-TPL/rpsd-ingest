@@ -472,18 +472,6 @@ wheels = [
 ]
 
 [[package]]
-name = "edwh-uuid7"
-version = "0.2.3"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "python-dateutil" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/a9/53/85eb9f73e804eb9bec08d8092e9f5570945a5a6c9223630dbd41a59270fe/edwh_uuid7-0.2.3.tar.gz", hash = "sha256:a3354ba9be573aaacfdf82f94245df41caebfecf1db9492a9cbe77b6f6e0e100", size = 7180, upload-time = "2025-10-10T15:00:44.562Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/fd/d3/798515d597e495985f251c57ee9b550188f896f1bb5ef71838522f753842/edwh_uuid7-0.2.3-py3-none-any.whl", hash = "sha256:9a2c270438af7109ba415211d190c22505fa25620cba58836b3ba3f19ef21747", size = 5671, upload-time = "2025-10-10T15:00:45.347Z" },
-]
-
-[[package]]
 name = "email-validator"
 version = "2.3.0"
 source = { registry = "https://pypi.org/simple" }
@@ -645,6 +633,7 @@ dependencies = [
     { name = "griffecli" },
     { name = "griffelib" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/04/56/28a0accac339c164b52a92c6cfc45a903acc0c174caa5c1713803467b533/griffe-2.0.0.tar.gz", hash = "sha256:c68979cd8395422083a51ea7cf02f9c119d889646d99b7b656ee43725de1b80f", size = 293906, upload-time = "2026-03-23T21:06:53.402Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/8b/94/ee21d41e7eb4f823b94603b9d40f86d3c7fde80eacc2c3c71845476dddaa/griffe-2.0.0-py3-none-any.whl", hash = "sha256:5418081135a391c3e6e757a7f3f156f1a1a746cc7b4023868ff7d5e2f9a980aa", size = 5214, upload-time = "2026-02-09T19:09:44.105Z" },
 ]
@@ -657,6 +646,7 @@ dependencies = [
     { name = "colorama" },
     { name = "griffelib" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/a4/f8/2e129fd4a86e52e58eefe664de05e7d502decf766e7316cc9e70fdec3e18/griffecli-2.0.0.tar.gz", hash = "sha256:312fa5ebb4ce6afc786356e2d0ce85b06c1c20d45abc42d74f0cda65e159f6ef", size = 56213, upload-time = "2026-03-23T21:06:54.8Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/e6/ed/d93f7a447bbf7a935d8868e9617cbe1cadf9ee9ee6bd275d3040fbf93d60/griffecli-2.0.0-py3-none-any.whl", hash = "sha256:9f7cd9ee9b21d55e91689358978d2385ae65c22f307a63fb3269acf3f21e643d", size = 9345, upload-time = "2026-02-09T19:09:42.554Z" },
 ]
@@ -665,6 +655,7 @@ wheels = [
 name = "griffelib"
 version = "2.0.0"
 source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ad/06/eccbd311c9e2b3ca45dbc063b93134c57a1ccc7607c5e545264ad092c4a9/griffelib-2.0.0.tar.gz", hash = "sha256:e504d637a089f5cab9b5daf18f7645970509bf4f53eda8d79ed71cce8bd97934", size = 166312, upload-time = "2026-03-23T21:06:55.954Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4d/51/c936033e16d12b627ea334aaaaf42229c37620d0f15593456ab69ab48161/griffelib-2.0.0-py3-none-any.whl", hash = "sha256:01284878c966508b6d6f1dbff9b6fa607bc062d8261c5c7253cb285b06422a7f", size = 142004, upload-time = "2026-02-09T19:09:40.561Z" },
 ]
@@ -1196,6 +1187,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pip-licenses"
+version = "5.5.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "prettytable" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/44/4c/b4be9024dae3b5b3c0a6c58cc1d4a35fffe51c3adb835350cb7dcd43b5cd/pip_licenses-5.5.1.tar.gz", hash = "sha256:7df370e6e5024a3f7449abf8e4321ef868ba9a795698ad24ab6851f3e7fc65a7", size = 49108, upload-time = "2026-01-27T21:46:41.432Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a0/a3/0b369cdffef3746157712804f1ded9856c75aa060217ee206f742c74e753/pip_licenses-5.5.1-py3-none-any.whl", hash = "sha256:ed5e229a93760e529cfa7edaec6630b5a2cd3874c1bddb8019e5f18a723fdead", size = 22108, upload-time = "2026-01-27T21:46:39.766Z" },
+]
+
+[[package]]
 name = "pluggy"
 version = "1.6.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1268,6 +1271,18 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/6a/31/1f0f7cd56f4188128793a62fab3ee50d612f27bae470a54e2d53511c6ffe/prefect-3.6.18.tar.gz", hash = "sha256:5704059353ce0639115d35bfa9f0b961a1b66af184ce3e44c36df9c65713b1b0", size = 11179612, upload-time = "2026-02-19T20:34:57.963Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4b/4d/186df7b4ce62f3277a343f324b4de4d61f4106dbe6a32d2c6583d29a88d3/prefect-3.6.18-py3-none-any.whl", hash = "sha256:1b70bff84962629507343ba94f3f4c0a154e8778d08631e63fed090210cb4585", size = 11935181, upload-time = "2026-02-19T20:34:54.549Z" },
+]
+
+[[package]]
+name = "prettytable"
+version = "3.17.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "wcwidth" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/79/45/b0847d88d6cfeb4413566738c8bbf1e1995fad3d42515327ff32cc1eb578/prettytable-3.17.0.tar.gz", hash = "sha256:59f2590776527f3c9e8cf9fe7b66dd215837cca96a9c39567414cbc632e8ddb0", size = 67892, upload-time = "2025-11-14T17:33:20.212Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/ee/8c/83087ebc47ab0396ce092363001fa37c17153119ee282700c0713a195853/prettytable-3.17.0-py3-none-any.whl", hash = "sha256:aad69b294ddbe3e1f95ef8886a060ed1666a0b83018bbf56295f6f226c43d287", size = 34433, upload-time = "2025-11-14T17:33:19.093Z" },
 ]
 
 [[package]]
@@ -1930,7 +1945,7 @@ wheels = [
 
 [[package]]
 name = "rpsd-flow"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "../rpsd-commons/packages/rpsd-flow" }
 dependencies = [
     { name = "prefect" },
@@ -1962,6 +1977,7 @@ dependencies = [
 dev = [
     { name = "hypothesis" },
     { name = "moto", extra = ["s3"] },
+    { name = "pip-licenses" },
     { name = "pytest" },
     { name = "pytest-benchmark" },
     { name = "pytest-mock" },
@@ -1981,6 +1997,7 @@ requires-dist = [
 dev = [
     { name = "hypothesis", specifier = ">=6.0.0" },
     { name = "moto", extras = ["s3"], specifier = ">=5.0.0" },
+    { name = "pip-licenses", specifier = ">=5.5.1" },
     { name = "pytest", specifier = ">=8.0.0" },
     { name = "pytest-benchmark", specifier = ">=4.0.0" },
     { name = "pytest-mock", specifier = ">=3.11.0" },
@@ -1990,11 +2007,10 @@ dev = [
 
 [[package]]
 name = "rpsd-storage"
-version = "0.1.0"
+version = "1.0.0"
 source = { editable = "../rpsd-commons/packages/rpsd-storage" }
 dependencies = [
     { name = "boto3" },
-    { name = "edwh-uuid7" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -2003,7 +2019,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "boto3", specifier = "==1.39.14" },
-    { name = "edwh-uuid7", specifier = ">=0.2.3" },
     { name = "httpx", specifier = ">=0.25.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
     { name = "pydantic-settings", specifier = ">=2.0.0" },
@@ -2011,7 +2026,7 @@ requires-dist = [
 
 [[package]]
 name = "rpsd-transport"
-version = "0.2.0"
+version = "1.0.0"
 source = { editable = "../rpsd-commons/packages/rpsd-transport" }
 dependencies = [
     { name = "fastapi", extra = ["standard"] },
@@ -2401,6 +2416,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/69/c4/088825b75489cb5b6a761a4542645718893d395d8c530b38734f19da44d2/watchfiles-1.1.0-cp314-cp314t-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:d05686b5487cfa2e2c28ff1aa370ea3e6c5accfe6435944ddea1e10d93872147", size = 452240, upload-time = "2025-06-15T19:06:26.552Z" },
     { url = "https://files.pythonhosted.org/packages/10/8c/22b074814970eeef43b7c44df98c3e9667c1f7bf5b83e0ff0201b0bd43f9/watchfiles-1.1.0-cp314-cp314t-musllinux_1_1_aarch64.whl", hash = "sha256:d0e10e6f8f6dc5762adee7dece33b722282e1f59aa6a55da5d493a97282fedd8", size = 625607, upload-time = "2025-06-15T19:06:27.606Z" },
     { url = "https://files.pythonhosted.org/packages/32/fa/a4f5c2046385492b2273213ef815bf71a0d4c1943b784fb904e184e30201/watchfiles-1.1.0-cp314-cp314t-musllinux_1_1_x86_64.whl", hash = "sha256:af06c863f152005c7592df1d6a7009c836a247c9d8adb78fef8575a5a98699db", size = 623315, upload-time = "2025-06-15T19:06:29.076Z" },
+]
+
+[[package]]
+name = "wcwidth"
+version = "0.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/35/a2/8e3becb46433538a38726c948d3399905a4c7cabd0df578ede5dc51f0ec2/wcwidth-0.6.0.tar.gz", hash = "sha256:cdc4e4262d6ef9a1a57e018384cbeb1208d8abbc64176027e2c2455c81313159", size = 159684, upload-time = "2026-02-06T19:19:40.919Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/68/5a/199c59e0a824a3db2b89c5d2dade7ab5f9624dbf6448dc291b46d5ec94d3/wcwidth-0.6.0-py3-none-any.whl", hash = "sha256:1a3a1e510b553315f8e146c54764f4fb6264ffad731b3d78088cdb1478ffbdad", size = 94189, upload-time = "2026-02-06T19:19:39.646Z" },
 ]
 
 [[package]]
