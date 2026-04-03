@@ -36,7 +36,7 @@ from rpsd_transport.settings import TransportSettings
 from rpsd_transport.transformers import with_custom_metadata
 
 from rpsd_ingest.auth import validate_api_key
-from rpsd_ingest.settings import AppSettings
+from rpsd_ingest.settings import ProjectSettings
 
 # Configure the module logger directly — never touch the root logger.
 # basicConfig and root-logger setup are no-ops when uvicorn has already
@@ -54,7 +54,7 @@ if not logger.handlers:
     logger.propagate = False
 
 # Initialize settings and dependencies
-settings = AppSettings()
+settings = ProjectSettings()
 storage_provider = get_storage_provider(settings.storage)
 carrier = HTTPCarrier(timeout=30)
 

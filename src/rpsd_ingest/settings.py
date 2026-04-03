@@ -22,10 +22,10 @@ class FlowInvokeSettings(BaseModel):
     after saving to storage. When ``None`` (default), flow
     invocation is disabled.
 
-    Environment variables (via AppSettings):
-    - APP__FLOW__DEPLOYMENT=ingest-flow/ingest-deployment
-    - APP__FLOW__TIMEOUT=0      # 0 = fire-and-forget (default)
-    - APP__FLOW__TIMEOUT=60.0   # wait up to 60 s for the flow to finish
+    Environment variables:
+    - FLOW__DEPLOYMENT=ingest-flow/ingest-deployment
+    - FLOW__TIMEOUT=0      # 0 = fire-and-forget (default)
+    - FLOW__TIMEOUT=60.0   # wait up to 60 s for the flow to finish
     """
 
     deployment: str | None = None
@@ -38,12 +38,12 @@ class ConsumerSettings(BaseModel):
     Separate from ForwardSettings to demonstrate proper separation of
     concerns: publishing vs. consuming are different responsibilities.
 
-    Environment variables (via AppSettings):
-    - APP__CONSUMER__CARRIER=kafka
-    - APP__CONSUMER__TOPIC=enriched-events
-    - APP__CONSUMER__KAFKA__BOOTSTRAP_SERVERS=...
-    - APP__CONSUMER__KAFKA__GROUP_ID=demo-consumer
-    - APP__CONSUMER__RABBITMQ__URL=...
+    Environment variables:
+    - CONSUMER__CARRIER=kafka
+    - CONSUMER__TOPIC=enriched-events
+    - CONSUMER__KAFKA__BOOTSTRAP_SERVERS=...
+    - CONSUMER__KAFKA__GROUP_ID=demo-consumer
+    - CONSUMER__RABBITMQ__URL=...
     """
 
     carrier: Literal["kafka", "rabbitmq"] | None = None
@@ -57,32 +57,51 @@ class AppSettings(BaseSettings):
     Unified application settings.
 
     Configuration via environment variables:
-        APP__TRANSPORT__API_KEY=secret123
-        APP__STORAGE__PROVIDER=fs
-        APP__STORAGE__FS__BASE_PATH=/tmp/storage
-        APP__STORAGE__S3__BUCKET_NAME=my-bucket
-        APP__FORWARD__CARRIER=kafka
-        APP__FORWARD__RECIPIENT=enriched-events
-        APP__FORWARD__MODE=fatheavy
-        APP__FORWARD__KAFKA__BOOTSTRAP_SERVERS=host.docker.internal:9092
-        APP__CONSUMER__CARRIER=kafka
-        APP__CONSUMER__TOPIC=enriched-events
-        APP__CONSUMER__KAFKA__GROUP_ID=demo-consumer
+        EXTERNAL_SCHEME=http
+        EXTERNAL_HOST=localhost
+        EXTERNAL_PORT=20000
+        TRANSPORT__API_KEY=secret123
+        STORAGE__PROVIDER=fs
+        STORAGE__FS__BASE_PATH=/tmp/storage
+        STORAGE__S3__BUCKET_NAME=my-bucket
+        FORWARD__CARRIER=kafka
+        FORWARD__RECIPIENT=enriched-events
+        FORWARD__MODE=fatheavy
+        FORWARD__KAFKA__BOOTSTRAP_SERVERS=host.docker.internal:9092
+        CONSUMER__CARRIER=kafka
+        CONSUMER__TOPIC=enriched-events
+        CONSUMER__KAFKA__GROUP_ID=demo-consumer
     """
 
     model_config = SettingsConfigDict(
-        env_prefix="APP__",
         env_nested_delimiter="__",
-        env_file=[
-            ".env.base",  # Scenario defaults (lower priority)
-            ".env",  # User overrides (higher priority)
-        ],
         env_file_encoding="utf-8",
         extra="ignore",
     )
 
+    # External access configuration
+    EXTERNAL_SCHEME: str = Field(default="http")
+    EXTERNAL_HOST: str = Field(default="localhost")
+    EXTERNAL_PORT: int = Field(default=20000)
+
+    # Internal application settings
     transport: TransportSettings = TransportSettings()
     storage: StorageSettings = StorageSettings()
     forward: ForwardSettings = Field(default_factory=ForwardSettings)
     flow: FlowInvokeSettings = Field(default_factory=FlowInvokeSettings)
     consumer: ConsumerSettings = Field(default_factory=ConsumerSettings)
+
+
+class ProjectSettings(AppSettings):
+    """Top-level settings with env file configuration.
+
+    Use this class when running the application (reads from .env file).
+    Use AppSettings directly for testing or programmatic configuration.
+    """
+
+    model_config = SettingsConfigDict(
+        env_nested_delimiter="__",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
