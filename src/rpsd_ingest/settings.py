@@ -15,6 +15,19 @@ from rpsd_transport.settings import (
 )
 
 
+class ExchangeAgreementSettings(BaseModel):
+    """Settings for rpsd-config Exchange Agreement API integration.
+
+    URL templates may contain {placeholders} for dynamic path segments.
+    Always validate and URL-encode dynamic values before substitution.
+
+    Environment variables:
+    - EXCHANGE_AGREEMENT__FLOW_PROFILE_URL=http://rpsd-config:8000/exchange_agreement/api/v1/contracts/{contract_code}/flow-profile
+    """
+
+    flow_profile_url: str | None = None
+
+
 class FlowInvokeSettings(BaseModel):
     """Settings for optional Prefect Flow invocation after ingest.
 
@@ -90,6 +103,9 @@ class AppSettings(BaseSettings):
     forward: ForwardSettings = Field(default_factory=ForwardSettings)
     flow: FlowInvokeSettings = Field(default_factory=FlowInvokeSettings)
     consumer: ConsumerSettings = Field(default_factory=ConsumerSettings)
+    exchange_agreement: ExchangeAgreementSettings = Field(
+        default_factory=ExchangeAgreementSettings
+    )
 
 
 class ProjectSettings(AppSettings):
