@@ -3,66 +3,23 @@
 This file provides context for AI development assistants (Claude Code, GitHub Copilot, etc.) working on this project.
 
 ## Project Overview
-See `ai-project.md` for project description and details.
 
-## Technology Stack
-- **Language:** Python 3.13+
-- **Package Manager:** uv
-- **Project Structure:** uv or uv workspace with packages in `packages/` folder
-- **CLI Framework:** Typer (modern, type-hint based)
-- **Config management:** pydantic-settings
-- **Testing:** pytest
-- **Linting/Formatting:** ruff
-
-## Development Environment
-- **Containerization:** Docker + devcontainers
-- **Package Management:** uv (not pip/poetry/conda)
-- **Docker is NOT installed:** inside the devcontainer, do NOT try to use it!
-
-## Coding Standards
-- Follow PEP 8 for Python code style
-- Use type hints where applicable
-- Use ruff for formatting and linting
-- Write docstrings for all public functions and classes
-- Always prefer absolute import above relative ones
-- Do not use workarounds such as: `# type: ignore[arg-type]`
-- Do not use workarounds such as: `cast()`
-
-## Common Development Commands (for AI assistants)
-- `uv sync` - Install/update all dependencies
-- `uv add <package>` - Add a dependency
-- `uv run app` - Run the application (batch mode)
-- `uv run app process <file>` - Run with specific input file (single-file mode)
-- `uv run app --help` - Show CLI help
-- `uv run pytest` - Run tests
-- `uv run ruff format` - Format code
-- `uv run ruff check --fix` - Auto-fix linting issues
-
-## Project Structure (uv)
-```
-project-root/
-├── examples/           # Example files
-├── pyproject.toml      # Project configuration
-├── uv.lock             # Lock file
-├── src/                # Project source files
-├── tests/              # Test files
-└── README.md           # Project documentation
-```
-
-## Project Structure (uv workspace)
-```
-project-root/
-├── pyproject.toml      # Workspace configuration
-├── uv.lock             # Lock file
-├── src/                # Workspace root source files
-├── packages/           # Workspace members
-│   ├── package-a/      # Individual package
-│   └── package-b/      # Another package
-├── tests/              # Test files
-└── README.md           # Project documentation
-```
+See `ai-project.md` for project description, technology stack, and conventions.
 
 ## Guidelines for AI Assistants
+
+### Agent Skills
+
+**For conversational AI assistants:** If you have file exploration capabilities, proactively check the `ai-skills/` directory at the start of new conversations to discover available skills.
+
+Each subdirectory of `ai-skills/` represents an Agent Skill - a specialized tool with its own documentation and scripts. Examples: accessibility auditing, code generation, testing automation, etc.
+
+**When to use skills:**
+- Use relevant skills automatically when tasks match their capabilities
+- Read the skill's `SKILL.md` file to understand usage, commands, and modes
+- Skills may have additional reference documentation in their directories
+
+**Pattern:** Explore → Read SKILL.md → Use when relevant
 
 ### Optional Documentation Files
 
@@ -109,7 +66,7 @@ If this file exists:
 - Use **user-friendly language** and focus on practical usage
 
 ### Git Commit Policy
-**🚨 CRITICAL: NEVER create git commits without EXPLICIT user permission! 🚨**
+**CRITICAL: NEVER create git commits without EXPLICIT user permission!**
 
 - **ALWAYS** stage changes with `git add` but STOP before committing
 - **ALWAYS** show the user what will be committed using `git status` and `git diff --cached`
@@ -120,25 +77,31 @@ If this file exists:
 - If unclear, ASK: "Would you like me to create a commit for these changes?"
 
 ### Development Guidelines
-- **IMPORTANT:** Always use `uv` commands, never `pip`, `poetry`, or `conda`
-- Run `uv sync` after adding/removing dependencies
-- Use `uv run pytest` to run tests after making changes
-- Use `uv run ruff format` and `uv run ruff check --fix` for code quality
-- For workspace projects, use `--package <member>` when targeting specific packages
 - Follow existing code patterns and structure
 - Consider security implications of changes
-- Write comprehensive documentation
-
-## Code Quality Requirements
-- **IMPORTANT:** Generate code that passes the configured Ruff rules.
-- Use modern Python type hints: `dict` instead of `Dict`, `list` instead of `List`, `str | None` instead of `Optional[str]`
-- **VERY IMPORTANT:** Keep lines under 88 characters (project's line length limit)
-- Sort and format imports properly (standard library, third-party, local imports in separate groups)
-- Remove unused imports
+- Write documentation for non-obvious decisions
 - Add trailing newlines to all files
-- Avoid f-strings without placeholders - use regular strings instead
-- Break long lines using parentheses, multi-line strings, or temporary variables
+
+### Research Guidelines
+Always do a web search if your knowledge of a specific subject is old or uncertain — never guess or invent.
+If doubts persist, ask the user for guidance on how to proceed.
+
+### Session Start
+- Read `ai-project.md` for project-specific context, conventions, and current scope
+
+### Before Finishing a Session
+
+When the user indicates a session is ending (or before a large body of work is committed):
+
+- **`ai-project.md`** — This file is written by the developer as a specification *before* asking the AI to work. The AI may propose updates, but must respect its nature:
+  - **Do:** Mark completed items as done, note what was deferred, suggest new future work entries
+  - **Do NOT:** Rewrite specifications, change the developer's intent, or turn planning language into past-tense documentation
+  - Always show proposed changes and ask for approval
+- **`ARCHITECTURE.md`** — If implementation details were added or changed significantly, suggest creating or updating this file
+- **`DECISIONS.md`** — If an architectural decision was made during the session, propose an addition in the same style as existing entries
+- Do NOT update any of these files silently — show the proposed changes and ask for approval
 
 ---
-*This file can be used by any AI coding assistant to understand the project context.*
-*Individual developers may have their own tool-specific context files (e.g., CLAUDE.local.md)*
+*This file is generic and reusable across projects.*
+*Project-specific context (stack, commands, conventions) is in `ai-project.md`.*
+*Individual developers may have their own tool-specific context files (e.g., `CLAUDE.local.md`).*
