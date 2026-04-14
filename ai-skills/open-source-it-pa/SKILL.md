@@ -7,6 +7,48 @@ dropped into any repository.
 
 ---
 
+## Modes
+
+This skill supports two invocation modes:
+
+### Implement mode (default)
+
+Run all phases in order, ask the user the mandatory questions, then write and
+fix all files to reach compliance.
+
+Invoke by telling the assistant:
+> *"Use this skill."* or *"Use this skill in implement mode."*
+
+### Assess mode
+
+Run **Phase 0 and Phase 1 only**. Make **no changes** to any file. Produce a
+structured compliance report (see Phase 1a below). Do not ask questions.
+
+Invoke by telling the assistant:
+> *"Use this skill in assessment mode."*
+
+The report must contain:
+
+1. **Traffic-light summary** for each requirement category:
+
+   | Category | Status | Notes |
+   |---|---|---|
+   | Licence file | ✅ / ⚠️ / ❌ | LICENSE present and correct SPDX text? |
+   | SPDX headers | ✅ / ⚠️ / ❌ | N of M source files covered |
+   | README completeness | ✅ / ⚠️ / ❌ | Which required sections are missing |
+   | CONTRIBUTING.md | ✅ / ⚠️ / ❌ | Present? Covers required topics? |
+   | publiccode.yml | ✅ / ⚠️ / ❌ | Present? |
+   | security.txt | ✅ / ⚠️ / ❌ | Present at `.well-known/security.txt`? |
+   | CI gate (SPDX) | ✅ / ⚠️ / ❌ | Header check in CI pipeline? |
+
+2. **Gap details** — for each ⚠️ or ❌, one line describing what is missing
+   or incomplete.
+
+3. **Prioritised action list** — what to address first to reach minimum
+   compliance for publication, ordered by importance.
+
+---
+
 ## Instructions for the AI assistant
 
 Follow every phase below in order. Do not skip phases. Read-only actions
