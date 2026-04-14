@@ -64,9 +64,18 @@ uv run ruff check
 uv run pytest
 ```
 
-## Licence
+## Licence and Contributor License Agreement
 
-By contributing to this project you agree that your contributions will be
-licensed under the
+By submitting a pull request you certify that:
+
+1. You have the right to submit the contribution under the project licence.
+2. Your contribution is your original work, or you have the necessary rights
+   to submit it.
+3. You grant the project maintainer (Agenzia TPL Bacino Città Metropolitana
+   Milano, Monza e Brianza, Lodi, Pavia) the right to redistribute your
+   contributions under any OSI-approved open source licence, including future
+   versions of EUPL or compatible licences such as AGPL-3.0-or-later.
+
+Your contributions will be licensed under the
 [European Union Public Licence v. 1.2 (EUPL-1.2)](LICENSE), the same licence
 that covers the rest of the project.
