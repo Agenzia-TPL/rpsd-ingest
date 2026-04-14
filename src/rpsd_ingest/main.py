@@ -15,12 +15,15 @@ This example shows how to:
 import hashlib
 import logging
 import os
+import re
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import quote
 
+import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 from rpsd_storage import get_storage_provider
@@ -36,7 +39,10 @@ from rpsd_transport.settings import TransportSettings
 from rpsd_transport.transformers import with_custom_metadata
 
 from rpsd_ingest.auth import validate_api_key
+from rpsd_ingest.models.exchange_agreement import ContractFlowProfileResponse
 from rpsd_ingest.settings import ProjectSettings
+
+_CONTRACT_CODE_RE = re.compile(r"^[A-Z]+-\d+$")
 
 # Configure the module logger directly — never touch the root logger.
 # basicConfig and root-logger setup are no-ops when uvicorn has already
@@ -128,6 +134,56 @@ def resolve_compare_before_save(what: str) -> bool | None:
     if what in force_save_what:
         return False
     return None  # use instance-level default
+
+
+async def fetch_flow_profile(who: str, what: str) -> str:
+    """Fetch the Prefect flow name for a contract/content-type pair from Config.
+
+    Args:
+        who: Contract code (e.g. "CTR-001").
+        what: Content category (e.g. "netex", "gtfs", "siri_pt").
+
+    Returns:
+        Flow name to use for Prefect invocation.
+
+    Raises:
+        ValueError: If who is malformed, contract is unknown (404),
+                    what is not listed, or what is inactive.
+    """
+    if not _CONTRACT_CODE_RE.match(who):
+        raise ValueError(f"Invalid contract code: {who!r}")
+
+    flow_profile_url = settings.exchange_agreement.flow_profile_url
+    if not flow_profile_url:
+        raise ValueError("EXCHANGE_AGREEMENT__FLOW_PROFILE_URL is not configured")
+
+    url = flow_profile_url.format(contract_code=quote(who, safe=""))
+
+    async with httpx.AsyncClient(timeout=10) as client:
+        response = await client.get(url)
+
+    if response.status_code == 404:
+        raise ValueError(f"Unknown contract code: {who!r}")
+
+    response.raise_for_status()
+
+    data = ContractFlowProfileResponse.model_validate(response.json())
+
+    if data.flow_profile is None:
+        raise ValueError(f"No flow profile assigned for contract {who!r}")
+
+    ingestion = data.flow_profile.options.data_ingestion
+
+    if what not in ingestion:
+        raise ValueError(
+            f"Content category {what!r} not supported for contract {who!r}"
+        )
+
+    entry = ingestion[what]
+    if not entry.active:
+        raise ValueError(f"Content category {what!r} is inactive for contract {who!r}")
+
+    return entry.flow
 
 
 def resolve_flow_deployment(
@@ -247,6 +303,11 @@ async def ingest_data(request: Request):
         t_receive = time.perf_counter() - t0
         logger.debug("carrier.receive: %.3fs", t_receive)
 
+        # Resolve flow from Config (if configured); reject unknown contracts/categories.
+        config_deployment: str | None = None
+        if settings.exchange_agreement.flow_profile_url:
+            config_deployment = await fetch_flow_profile(message.who, message.what)
+
         # Resolve deduplication policy server-side from the content category.
         # Clients never control this — the mapping lives here on the server.
         compare_before_save = resolve_compare_before_save(message.what)
@@ -266,7 +327,7 @@ async def ingest_data(request: Request):
             try:
                 from rpsd_flow import run_flow_async
 
-                deployment = resolve_flow_deployment(
+                deployment = config_deployment or resolve_flow_deployment(
                     message.who,
                     message.what,
                     settings.flow.deployment,
@@ -351,6 +412,10 @@ async def ingest_data(request: Request):
         )
 
         return JSONResponse(status_code=201, content=response_data)
+
+    except ValueError as e:
+        logger.warning("Message rejected: %s", e)
+        raise HTTPException(status_code=400, detail=str(e))
 
     except PermissionError as e:
         logger.warning("Authentication failed: %s", e)
