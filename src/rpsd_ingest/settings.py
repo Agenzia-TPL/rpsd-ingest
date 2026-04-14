@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2026 AGENZIA TPL BACINO CITTA' METROPOLITANA MILANO, MONZA E BRIANZA, LODI, PAVIA
+# SPDX-License-Identifier: EUPL-1.2
 """
 Unified application settings combining transport and storage configuration.
 """
