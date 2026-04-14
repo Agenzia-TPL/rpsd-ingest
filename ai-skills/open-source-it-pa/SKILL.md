@@ -135,21 +135,23 @@ the repository root.
 
 #### 4b. SPDX headers in source files
 
-Add the following two lines at the very top of **every** source file that
-does not already have them (before any other content, including docstrings or
-module-level comments):
+Use the `check_headers.sh` script bundled in this skill to add headers in one
+step:
 
-```
-# SPDX-FileCopyrightText: {year} {LEGAL NAME OF COPYRIGHT HOLDER}
-# SPDX-License-Identifier: {SPDX-ID}
+```bash
+bash ai-skills/open-source-it-pa/scripts/check_headers.sh \
+  --fix \
+  --copyright "{year} {LEGAL NAME OF COPYRIGHT HOLDER}" \
+  --license {SPDX-ID} \
+  --ext py,sh,js,ts,go \   # adjust to the repo's languages
+  src/
 ```
 
-Adapt the comment syntax to the file type:
-- Python, Shell, Ruby, YAML, TOML: `#`
-- JavaScript, TypeScript, Java, Go, Rust, C, C++: `//` (or `/* ... */` for
-  header blocks)
-- HTML, XML: `<!-- ... -->`
-- SQL: `--`
+The script:
+- Uses the correct comment character per file extension (see its lookup table).
+- Inserts headers after the shebang line (`#!`) for shell scripts.
+- Skips auto-generated paths (`.git/`, `.venv/`, `dist/`, `build/`, etc.).
+- Is a no-op on files that already have both SPDX tags.
 
 Do not add headers to:
 - Auto-generated files (e.g. `migrations/`, `dist/`, `build/`, `*.pb.go`,
@@ -254,8 +256,11 @@ After all writes are complete, verify:
 
 1. `LICENSE` exists in the repository root and contains the correct licence
    text.
-2. Every source file in `src/` (or equivalent) begins with the two SPDX
-   comment lines.
+2. Run the check script to confirm all source files are covered:
+   ```bash
+   bash ai-skills/open-source-it-pa/scripts/check_headers.sh --check --ext py,sh src/
+   ```
+   Must exit 0.
 3. `README.md` contains all required sections listed in step 4c.
 4. `CONTRIBUTING.md` exists.
 5. If `publiccode.yml` was created, validate it is valid YAML and contains at
@@ -282,12 +287,14 @@ Print a concise summary listing:
 
 ## Notes for portability
 
-- This skill file is self-contained and has no dependencies on the hosting
-  repository.
-- To use it as a Claude Code slash command, copy or symlink this file to
-  `.claude/commands/open-source-it-pa.md` in the target repository. The
-  command becomes `/open-source-it-pa`.
-- To use it with GitHub Copilot or another assistant, paste the content into
-  the assistant's context or reference this file explicitly.
+- This skill directory (`open-source-it-pa/`) is self-contained. Copy the
+  entire directory to any repository's `ai-skills/` folder.
+- Scripts live in `scripts/` inside this directory. Run them from the repo
+  root using a relative path:
+  ```bash
+  bash ai-skills/open-source-it-pa/scripts/check_headers.sh --check src/
+  ```
+- To use it with GitHub Copilot or another assistant, paste the content of
+  this file into the assistant's context or reference it explicitly.
 - The skill does **not** commit changes. Stage and commit the resulting files
   following the repository's own git policy.
