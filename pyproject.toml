@@ -1,0 +1,72 @@
+[project]
+name = "rpsd-ingest"
+version = "1.0.0"
+description = "Ingest service of the Rapsodia project"
+readme = "README.md"
+authors = [
+    { name = "Agenzia TPL" }
+]
+license = "EUPL-1.2"
+requires-python = ">=3.13"
+
+dependencies = [
+    "rpsd-transport[kafka,rabbitmq]",
+    "rpsd-storage",
+    "rpsd-flow",
+    "fastapi[standard]>=0.116.0,<0.117.0",
+]
+
+[tool.uv.sources]
+rpsd-transport = { path = "../rpsd-commons/packages/rpsd-transport", editable = true }
+rpsd-storage = { path = "../rpsd-commons/packages/rpsd-storage", editable = true }
+rpsd-flow = { path = "../rpsd-commons/packages/rpsd-flow", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project.scripts]
+server = "rpsd_ingest.main:run"
+
+[dependency-groups]
+dev = [
+    "ruff>=0.13.1",
+    "pytest>=8.0.0",
+    "moto[s3]>=5.0.0",
+    "respx>=0.20.0",
+    "hypothesis>=6.0.0",
+    "pytest-benchmark>=4.0.0",
+    "pytest-mock>=3.11.0",
+    "pip-licenses>=5.5.1",
+]
+
+[tool.ruff]
+target-version = "py313"
+src = ["packages/*/src", "examples/*/src"]
+line-length = 88
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "W"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"packages/*/examples/*" = ["N999"]
+"examples/*/src/*" = ["N999"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+markers = [
+    "integration: marks tests as integration tests",
+    "benchmark: marks tests as performance benchmarks",
+    "slow: marks tests as slow-running tests",
+    "property: marks tests as property-based tests",
+    "unit: marks tests as unit tests",
+]

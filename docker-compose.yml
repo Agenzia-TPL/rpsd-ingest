@@ -1,0 +1,15 @@
+services:
+  rpsd-ingest:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      additional_contexts:
+        rpsd-commons: ../rpsd-commons
+    container_name: rpsd-ingest
+    restart: unless-stopped
+    command: uv run server
+    ports:
+      - "8888:8000"
+    volumes:
+      - ./.env.base:/app/.env.base:ro
+      - ./.env:/app/.env:ro
