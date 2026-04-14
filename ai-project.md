@@ -104,3 +104,84 @@ Here, we're interested in values inside "flow_profile"/"options"/"data_ingestion
 Then, we have to look for a key corresponding to the "what" value of the received message, that should be one of the listed values, such as: "gtfs", "netex", "siri_pt", etc.
 If the "what" value is not listed, the message must be rejected, otherwise the "flow" field contains the name of the Prefect Flow to invoke.
 As a start, we just have to magae the call to Config, the check of the "who" and "what" values, we'll implement the actual invocation later.
+
+---
+
+## Project Structure
+
+```
+project-root/
+├── pyproject.toml      # Project configuration
+├── uv.lock             # Lock file
+├── src/                # Project source files
+│   └── rpsd_ingest/    # Application package
+├── tests/              # Test files
+└── README.md           # Project documentation
+```
+
+## Project-Specific Guidelines
+
+- This service ingests data into the Rapsodia platform; changes may affect downstream services
+  that consume ingested data
+- Follow the existing application structure under `src/rpsd_ingest/`
+- Use `--package rpsd-ingest` when targeting this package in uv workspace commands, if applicable
+
+---
+
+## Technology Stack
+
+- **Language:** Python 3.13+
+- **Framework:** Django (REST API) + Django-ninja (async API support)
+- **Package Manager:** uv (not pip/poetry/conda)
+- **Production server:** Gunicorn (process manager) + UvicornWorker (ASGI)
+- **Testing:** pytest
+- **Linting/Formatting:** ruff
+
+## Development Environment
+
+- **Containerization:** Docker + devcontainers
+
+## Common Development Commands
+
+- `uv sync` - Install/update all dependencies
+- `uv add <package>` - Add a dependency
+- `uv run pytest` - Run tests
+- `uv run ruff format` - Format code
+- `uv run ruff check --fix` - Auto-fix linting issues
+- `uv run python` - Execute Python code on the fly
+- `uv run devserver` - Run Django dev server with configured host/port (devcontainer)
+
+See `USAGE.md` for running with Docker (integration tests, staging, production).
+
+## Development Guidelines
+
+- **IMPORTANT:** Always use `uv` commands, never `pip`, `poetry`, or `conda`
+- Run `uv sync` after adding/removing dependencies
+- Use `uv run pytest` to run tests after making changes
+- Use `uv run ruff format` and `uv run ruff check --fix` for code quality
+- For workspace projects, use `--package <member>` when targeting specific packages
+
+## Coding Standards
+
+- Follow PEP 8 for Python code style
+- Use type hints where applicable
+- Use ruff for formatting and linting
+- Write docstrings for all public functions and classes
+- Always prefer absolute imports over relative ones
+- Do not use workarounds such as `# type: ignore[arg-type]`
+- Do not use workarounds such as `cast()`
+- Use Pydantic Settings (not python-decouple or python-dotenv) for full type inference
+
+## Code Quality Requirements
+
+- Generate code that passes the configured Ruff rules
+- Use modern Python type hints: `dict` not `Dict`, `list` not `List`, `str | None` not `Optional[str]`
+- Keep lines under 88 characters (project's line length limit)
+- Sort and format imports properly (standard library, third-party, local imports in separate groups)
+- Remove unused imports
+- Add trailing newlines to all files
+- Avoid f-strings without placeholders — use regular strings instead
+- Break long lines using parentheses, multi-line strings, or temporary variables
+
+---
+*For generic AI assistant guidelines and behavior, see `ai-context.md`.*
