@@ -148,9 +148,24 @@ jobs:
           AGPL;\
           GNU Affero General Public License"
 
+  spdx-check:
+    name: SPDX Headers
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out rpsd-ingest
+        uses: actions/checkout@v4
+
+      - name: Check SPDX headers
+        run: |
+          bash ai-skills/open-source-it-pa/scripts/check_headers.sh \
+            --check --ext py src/
+
   build-and-push:
     name: Build & Push
-    needs: [test, secrets-scan, license-check]
+    needs: [test, secrets-scan, license-check, spdx-check]
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     permissions:
