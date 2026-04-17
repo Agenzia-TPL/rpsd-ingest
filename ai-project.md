@@ -17,93 +17,29 @@ It's heavily inspired by its **FastAPI Ingest Example**.
 
 ## Retrieve Flow configurations from Config
 
-In main.oy method resolve_flow_deployment should decide which Prefect Flow to invoke to process the received file.
-To that avail it has to call the Config service upon the URL specified by:
+**Problem:** `resolve_flow_deployment` in `main.py` needs to select the correct Prefect Flow for each incoming message. The mapping from `(who, what)` to a flow name should come from the Config service, not be hard-coded.
 
-    settings.exchange_agreement.flow_profile_url
+**Proposed solution:** Add an async `fetch_flow_profile(who, what)` function that calls the Config service and returns the flow name to invoke. The feature is opt-in: if `EXCHANGE_AGREEMENT__FLOW_PROFILE_URL` is not set, the existing `settings.flow.deployment` fallback is used unchanged.
 
-This variable is retrieved from env and is something like:
+**Settings:** Add `ExchangeAgreementSettings` (nested under `exchange_agreement`) with a single optional field:
 
     EXCHANGE_AGREEMENT__FLOW_PROFILE_URL=http://rpsd-config:8000/exchange_agreement/api/v1/contracts/{contract_code}/flow-profile
 
-where "contract_code" is the "who" value of the received message.
+**Contract code validation:** Validate `who` against `^[A-Z]+-\d+$` before building the URL, then URL-encode with `quote()` to prevent injection. Reject with `ValueError` if the pattern doesn't match.
 
-To protect from injections a safetize method could be used, such as:
+**HTTP call:** Use `httpx.AsyncClient` (timeout 10 s). A 404 means unknown contract → reject the message with `ValueError`. Any other non-2xx raises via `raise_for_status()`.
 
-import re
-from urllib.parse import quote
+**Response model:** Parse the response into typed Pydantic models (`ContractFlowProfileResponse`, `FlowProfile`, `FlowProfileOptions`, `DataIngestionEntry`) defined in `models/exchange_agreement.py`, mirroring the schema from `rpsd-config`.
 
-CONTRACT_CODE_RE = re.compile(r"^[A-Z]+-\d+$")  # or whatever the actual pattern is
+**Validation logic:**
+1. If `flow_profile` is `None` on the response → reject (no profile assigned).
+2. Look up `what` in `flow_profile.options.data_ingestion` → reject if not present.
+3. Check `entry.active` → reject if `False`.
+4. Return `entry.flow` as the deployment name.
 
-def flow_profile_url(contract_code: str) -> str:
-    if not CONTRACT_CODE_RE.match(contract_code):
-        raise ValueError(f"Invalid contract code: {contract_code}")
-    return settings.exchange_agreement.flow_profile_url.format(
-        contract_code=quote(contract_code, safe="")
-    )
+**Integration in `/ingest`:** Call `fetch_flow_profile` right after `carrier.receive()`. If it returns a flow name, use it as `config_deployment`; this takes priority over `settings.flow.deployment` when invoking the Prefect flow. All `ValueError`s from this function bubble up as HTTP 400 responses.
 
-The call to rhis API must be made before line 252 of main.py, that is, right after the message is received, or even before the message is retrieved at all, because all that's needed is the "who" value.
-If the API call returns an error, for example an error of unknown contract (404), the received message must be refused.
-If, instead, it returns a success, it will be a response such as:
-{
-  "contract_code": "CTR-001",
-  "flow_profile": {
-    "code": "standard-it-v1",
-    "name": "Standard IT v1",
-    "schema_version": "1.0",
-    "is_active": true,
-    "description": "Profilo standard per import e retention base.",
-    "options": {
-      "data_ingestion": {
-        "gtfs": {
-          "flow": "plnd-002",
-          "active": false,
-          "description": "Carica GTFS con step di trasformazione."
-        },
-        "netex": {
-          "flow": "plnd-001",
-          "active": true,
-          "description": "Carica il programmato da NeTEx."
-        },
-        "siri_pt": {
-          "flow": "rltm-spt-001",
-          "active": true,
-          "description": "Acquisisce real time SIRI PT."
-        }
-      },
-      "data_retention": {
-        "plnd": {
-          "days": 100,
-          "flow": "plnd-clr-001",
-          "description": "Pulizia storico programmato."
-        },
-        "rltm": {
-          "days": 3,
-          "flow": "rltm-clr-001",
-          "description": "Pulizia storico real time."
-        }
-      },
-      "planned_master": {
-        "gtfs": {
-          "flow": "master-002",
-          "active": true,
-          "description": "Importa GTFS e lo converte in NeTEx."
-        },
-        "netex": {
-          "flow": "master-001",
-          "active": true,
-          "description": "Carica il programmato master in formato NeTEx."
-        }
-      },
-      "general_profile": "it"
-    }
-  }
-}
-
-Here, we're interested in values inside "flow_profile"/"options"/"data_ingestion", but this path is not strictly defined yet...
-Then, we have to look for a key corresponding to the "what" value of the received message, that should be one of the listed values, such as: "gtfs", "netex", "siri_pt", etc.
-If the "what" value is not listed, the message must be rejected, otherwise the "flow" field contains the name of the Prefect Flow to invoke.
-As a start, we just have to magae the call to Config, the check of the "who" and "what" values, we'll implement the actual invocation later.
+**Expected outcome:** Every ingested message is validated against the Config service. Unknown contracts, unsupported content types, and inactive flows are rejected before storage. When the env var is absent the service behaves exactly as before.
 
 ---
 
