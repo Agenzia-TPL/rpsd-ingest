@@ -65,6 +65,22 @@ It's heavily inspired by its **FastAPI Ingest Example**.
 
 **Expected outcome:** Every ingested message is validated against the Config service. Unknown contracts, unsupported content types, and inactive flows are rejected before storage. When the env var is absent the service behaves exactly as before.
 
+## IDP Token Proxy
+
+**Problem:** External clients need a Keycloak-issued JWT to call `/ingest`, but the Keycloak instance must remain on the internal network only.
+
+**Proposed solution:** Add a `POST /token` endpoint that proxies a standard OAuth2 `client_credentials` request to the configured identity provider and returns its response as-is. Ingest remains agnostic to the IDP vendor — it only knows a URL.
+
+**Settings:** Add `token_url` to the existing `ExchangeAgreementSettings`:
+
+    EXCHANGE_AGREEMENT__TOKEN_URL=http://idp:8080/realms/rapsodia/protocol/openid-connect/token
+
+**Request format:** Standard OAuth2 form-encoded body (`application/x-www-form-urlencoded`) with `client_id`, `client_secret`, and `grant_type` (default: `client_credentials`).
+
+**Behaviour:** The IDP response (success or error) is forwarded transparently with its original HTTP status code. The endpoint returns `404` when `EXCHANGE_AGREEMENT__TOKEN_URL` is unset (opt-in). Credentials are never logged.
+
+**Expected outcome:** External clients call `POST /token` on rpsd-ingest to obtain a JWT, then use that JWT on subsequent `/ingest` calls. The IDP stays unreachable from outside the platform.
+
 ---
 
 ## Project Structure

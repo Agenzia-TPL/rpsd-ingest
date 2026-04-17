@@ -24,9 +24,11 @@ class ExchangeAgreementSettings(BaseModel):
     Always validate and URL-encode dynamic values before substitution.
 
     Environment variables:
+    - EXCHANGE_AGREEMENT__TOKEN_URL=http://idp:8080/realms/rapsodia/protocol/openid-connect/token
     - EXCHANGE_AGREEMENT__FLOW_PROFILE_URL=http://rpsd-config:8000/exchange_agreement/api/v1/contracts/{contract_code}/flow-profile
     """
 
+    token_url: str | None = None
     flow_profile_url: str | None = None
 
 

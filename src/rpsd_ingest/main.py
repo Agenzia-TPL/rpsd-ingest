@@ -22,11 +22,11 @@ import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any
 from urllib.parse import quote
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException, Request
 from fastapi.responses import JSONResponse
 from rpsd_storage import get_storage_provider
 from rpsd_transport import get_carrier
@@ -279,6 +279,43 @@ async def http_exception_handler(
         status_code=exc.status_code,
         content={"detail": exc.detail},
     )
+
+
+@app.post("/token")
+async def get_token(
+    client_id: Annotated[str, Form()],
+    client_secret: Annotated[str, Form()],
+    grant_type: Annotated[str, Form()] = "client_credentials",
+) -> JSONResponse:
+    """Proxy a client_credentials token request to the configured identity provider.
+
+    Allows external clients to obtain a JWT without direct access to the IDP.
+    Only available when EXCHANGE_AGREEMENT__TOKEN_URL is set.
+
+    Args:
+        client_id: OAuth2 client identifier.
+        client_secret: OAuth2 client secret.
+        grant_type: OAuth2 grant type (default: client_credentials).
+
+    Returns:
+        The IDP token response (access_token, expires_in, …) forwarded as-is.
+
+    Raises:
+        404: If EXCHANGE_AGREEMENT__TOKEN_URL is not configured.
+        Forwards any IDP error response (e.g. 401) transparently.
+    """
+    if not settings.exchange_agreement.token_url:
+        raise HTTPException(status_code=404, detail="Token endpoint not configured")
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.post(
+            settings.exchange_agreement.token_url,
+            data={
+                "grant_type": grant_type,
+                "client_id": client_id,
+                "client_secret": client_secret,
+            },
+        )
+    return JSONResponse(content=response.json(), status_code=response.status_code)
 
 
 @app.post("/ingest")
