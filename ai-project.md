@@ -41,6 +41,20 @@ It's heavily inspired by its **FastAPI Ingest Example**.
 
 **Expected outcome:** Every ingested message is validated against the Config service. Unknown contracts, unsupported content types, and inactive flows are rejected before storage. When the env var is absent the service behaves exactly as before.
 
+## Authentication
+
+**Problem:** The ingest endpoint must reject requests that don't carry a valid API key, without relying on a full OAuth/session infrastructure.
+
+**Proposed solution:** A lightweight `validate_api_key(request, expected_api_key)` function in `auth.py` that inspects incoming headers and raises `PermissionError` on failure.
+
+**Key extraction (priority order):**
+1. `Authorization` header — accepts `Bearer <key>` or `Token <key>` schemes.
+2. `x-api-key` / `X-API-Key` header as a fallback.
+
+**Validation logic:** If no key is found, or the extracted key does not match `expected_api_key`, the function raises `PermissionError("Unauthorized - Invalid API key")`. When `expected_api_key` itself is `None` or empty (i.e. the setting is unset), every request is rejected — there is no "auth-disabled" shortcut.
+
+**Expected outcome:** Any caller that does not present the correct API key receives an authorization error before any ingest logic runs. The implementation stays intentionally thin: no sessions, no tokens, no refresh flows.
+
 ---
 
 ## Project Structure
