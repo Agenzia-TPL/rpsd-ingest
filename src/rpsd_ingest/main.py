@@ -138,7 +138,9 @@ def resolve_compare_before_save(what: str) -> bool | None:
     return None  # use instance-level default
 
 
-async def fetch_flow_profile(who: str, what: str) -> str:
+async def fetch_flow_profile(
+    who: str, what: str, bearer_token: str | None = None
+) -> str:
     """Fetch the Prefect flow name for a contract/content-type pair from Config.
 
     Args:
@@ -161,8 +163,12 @@ async def fetch_flow_profile(who: str, what: str) -> str:
 
     url = flow_profile_url.format(contract_code=quote(who, safe=""))
 
+    headers: dict[str, str] = {}
+    if bearer_token:
+        headers["Authorization"] = f"Bearer {bearer_token}"
+
     async with httpx.AsyncClient(timeout=10) as client:
-        response = await client.get(url)
+        response = await client.get(url, headers=headers)
 
     if response.status_code == 404:
         raise ValueError(f"Unknown contract code: {who!r}")
@@ -296,8 +302,8 @@ async def ingest_data(request: Request):
         500: For other errors
     """
     try:
-        # Validate API key
-        validate_api_key(request, settings.transport.api_key)
+        # Validate API key / JWT; returns the JWT string if token-authenticated
+        jwt_token = validate_api_key(request, settings.transport.api_key)
 
         # Receive and parse message via carrier
         t0 = time.perf_counter()
@@ -308,7 +314,9 @@ async def ingest_data(request: Request):
         # Resolve flow from Config (if configured); reject unknown contracts/categories.
         config_deployment: str | None = None
         if settings.exchange_agreement.flow_profile_url:
-            config_deployment = await fetch_flow_profile(message.who, message.what)
+            config_deployment = await fetch_flow_profile(
+                message.who, message.what, bearer_token=jwt_token
+            )
 
         # Resolve deduplication policy server-side from the content category.
         # Clients never control this — the mapping lives here on the server.

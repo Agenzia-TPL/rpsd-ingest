@@ -15,6 +15,30 @@ Uses packages from the rpsd-commons component:
 
 It's heavily inspired by its **FastAPI Ingest Example**. 
 
+## Authentication
+
+**Problem:** The ingest endpoint must reject requests that don't carry a valid API key, without relying on a full OAuth/session infrastructure.
+
+**Proposed solution:** A lightweight `validate_api_key(request, expected_api_key)` function in `auth.py` that inspects incoming headers and raises `PermissionError` on failure.
+
+**Key extraction (priority order):**
+1. `Authorization` header — accepts `Bearer <key>` or `Token <key>` schemes.
+2. `x-api-key` / `X-API-Key` header as a fallback.
+
+**Validation logic:** If no key is found, or the extracted key does not match `expected_api_key`, the function raises `PermissionError("Unauthorized - Invalid API key")`. When `expected_api_key` itself is `None` or empty (i.e. the setting is unset), every request is rejected — there is no "auth-disabled" shortcut.
+
+**Expected outcome:** Any caller that does not present the correct API key receives an authorization error before any ingest logic runs. The implementation stays intentionally thin: no sessions, no tokens, no refresh flows.
+
+### JWT gateway check
+
+**Problem:** Callers may present a Keycloak-issued JWT as the `Authorization: Bearer` credential. Signature verification requires JWKS fetches (network, caching). A structural-only check catches the obvious bad cases (malformed, expired, wrong format) at zero network cost.
+
+**Proposed solution:** If the Bearer value has the three-part `.`-separated JWT structure, `validate_api_key` performs a claims-only decode using PyJWT with `verify_signature=False` and `verify_exp=True`. The `expected_api_key` comparison is skipped for the JWT path. The function returns the raw JWT string on success, or `None` for a plain API key.
+
+**Validation catches:** malformed tokens, expired tokens (via `exp` claim). Signature and issuer are intentionally not checked here — the Config service does the real validation downstream.
+
+**Cross-cutting — forwarding to Config:** When `validate_api_key` returns a JWT string, `fetch_flow_profile` forwards it as `Authorization: Bearer <token>` on the HTTP call to the Config service. If a plain API key was used, the Config call is unauthenticated.
+
 ## Retrieve Flow configurations from Config
 
 **Problem:** `resolve_flow_deployment` in `main.py` needs to select the correct Prefect Flow for each incoming message. The mapping from `(who, what)` to a flow name should come from the Config service, not be hard-coded.
@@ -40,20 +64,6 @@ It's heavily inspired by its **FastAPI Ingest Example**.
 **Integration in `/ingest`:** Call `fetch_flow_profile` right after `carrier.receive()`. If it returns a flow name, use it as `config_deployment`; this takes priority over `settings.flow.deployment` when invoking the Prefect flow. All `ValueError`s from this function bubble up as HTTP 400 responses.
 
 **Expected outcome:** Every ingested message is validated against the Config service. Unknown contracts, unsupported content types, and inactive flows are rejected before storage. When the env var is absent the service behaves exactly as before.
-
-## Authentication
-
-**Problem:** The ingest endpoint must reject requests that don't carry a valid API key, without relying on a full OAuth/session infrastructure.
-
-**Proposed solution:** A lightweight `validate_api_key(request, expected_api_key)` function in `auth.py` that inspects incoming headers and raises `PermissionError` on failure.
-
-**Key extraction (priority order):**
-1. `Authorization` header — accepts `Bearer <key>` or `Token <key>` schemes.
-2. `x-api-key` / `X-API-Key` header as a fallback.
-
-**Validation logic:** If no key is found, or the extracted key does not match `expected_api_key`, the function raises `PermissionError("Unauthorized - Invalid API key")`. When `expected_api_key` itself is `None` or empty (i.e. the setting is unset), every request is rejected — there is no "auth-disabled" shortcut.
-
-**Expected outcome:** Any caller that does not present the correct API key receives an authorization error before any ingest logic runs. The implementation stays intentionally thin: no sessions, no tokens, no refresh flows.
 
 ---
 
