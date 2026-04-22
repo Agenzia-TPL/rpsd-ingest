@@ -24,7 +24,7 @@ class ExchangeAgreementSettings(BaseModel):
     Always validate and URL-encode dynamic values before substitution.
 
     Environment variables:
-    - EXCHANGE_AGREEMENT__TOKEN_URL=http://idp:8080/realms/rapsodia/protocol/openid-connect/token
+    - EXCHANGE_AGREEMENT__TOKEN_URL=http://idp:8080/realms/rpsd/protocol/openid-connect/token
     - EXCHANGE_AGREEMENT__FLOW_PROFILE_URL=http://rpsd-config:8000/exchange_agreement/api/v1/contracts/{contract_code}/flow-profile
     """
 
@@ -69,6 +69,48 @@ class ConsumerSettings(BaseModel):
     rabbitmq: RabbitMQSettings = Field(default_factory=RabbitMQSettings)
 
 
+class JwtAuthSettings(BaseModel):
+    """JWT validation settings for bearer-token ingest authentication.
+
+    Environment variables:
+    - JWT_AUTH__ENABLED=true
+    - JWT_AUTH__ISSUER_URL=http://keycloak:8080/realms/rpsd
+    - JWT_AUTH__AUDIENCE=rpsd-ingest
+    - JWT_AUTH__JWKS_URL=http://keycloak:8080/realms/rpsd/protocol/openid-connect/certs
+    - JWT_AUTH__ALGORITHMS=[\"RS256\"]
+    - JWT_AUTH__LEEWAY_SECONDS=0
+    """
+
+    enabled: bool = False
+    issuer_url: str | None = None
+    audience: str | None = None
+    jwks_url: str | None = None
+    algorithms: list[str] = Field(default_factory=lambda: ["RS256"])
+    leeway_seconds: int = 0
+
+
+class ConfigAuthzSettings(BaseModel):
+    """Settings for internal authz check calls from ingest to rpsd-config.
+
+    Environment variables:
+    - CONFIG_AUTHZ__URL=http://rpsd-config:8000/internal/authz/check
+    - CONFIG_AUTHZ__TIMEOUT_SECONDS=5
+    - CONFIG_AUTHZ__VERIFY_TLS=true
+    - CONFIG_AUTHZ__TOKEN_URL=http://keycloak:8080/realms/rpsd/protocol/openid-connect/token
+    - CONFIG_AUTHZ__CLIENT_ID=rpsd-ingest
+    - CONFIG_AUTHZ__CLIENT_SECRET=...
+    - CONFIG_AUTHZ__AUDIENCE=rpsd-config-internal
+    """
+
+    url: str | None = None
+    timeout_seconds: float = 5.0
+    verify_tls: bool = True
+    token_url: str | None = None
+    client_id: str | None = None
+    client_secret: str | None = None
+    audience: str | None = None
+
+
 class AppSettings(BaseSettings):
     """
     Unified application settings.
@@ -110,6 +152,8 @@ class AppSettings(BaseSettings):
     exchange_agreement: ExchangeAgreementSettings = Field(
         default_factory=ExchangeAgreementSettings
     )
+    jwt_auth: JwtAuthSettings = Field(default_factory=JwtAuthSettings)
+    config_authz: ConfigAuthzSettings = Field(default_factory=ConfigAuthzSettings)
 
 
 class ProjectSettings(AppSettings):

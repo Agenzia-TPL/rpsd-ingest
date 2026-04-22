@@ -45,6 +45,21 @@ from rpsd_ingest.models.exchange_agreement import ContractFlowProfileResponse
 from rpsd_ingest.settings import ProjectSettings
 
 _CONTRACT_CODE_RE = re.compile(r"^[A-Z]+-\d+$")
+_AUTHZ_ACTION_INGEST_WRITE = "ingest:write"
+_TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS = "client_credentials"
+_S2S_TOKEN_LEEWAY_SECONDS = 15
+_S2S_TOKEN_CACHE: dict[str, Any] = {
+    "access_token": None,
+    "expires_at": 0.0,
+}
+
+
+class AuthorizationDeniedError(Exception):
+    """Raised when domain authorization denies a valid principal."""
+
+
+class AuthorizationServiceError(Exception):
+    """Raised when internal authz/token services are unavailable or invalid."""
 
 # Configure the module logger directly — never touch the root logger.
 # basicConfig and root-logger setup are no-ops when uvicorn has already
@@ -219,6 +234,177 @@ def resolve_flow_deployment(
     return default_deployment
 
 
+def _clear_s2s_token_cache() -> None:
+    _S2S_TOKEN_CACHE["access_token"] = None
+    _S2S_TOKEN_CACHE["expires_at"] = 0.0
+
+
+def _get_cached_s2s_token() -> str | None:
+    token = _S2S_TOKEN_CACHE.get("access_token")
+    expires_at = float(_S2S_TOKEN_CACHE.get("expires_at") or 0.0)
+    now = time.time()
+    if isinstance(token, str) and token and now < (expires_at - _S2S_TOKEN_LEEWAY_SECONDS):
+        return token
+    return None
+
+
+def _require_config_authz_setting(value: str | None, field_name: str) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise AuthorizationServiceError(
+            f"CONFIG_AUTHZ__{field_name} is required for JWT authz checks"
+        )
+    return value.strip()
+
+
+async def _obtain_config_authz_s2s_token(*, force_refresh: bool = False) -> str:
+    if not force_refresh:
+        cached = _get_cached_s2s_token()
+        if cached:
+            return cached
+
+    token_url = _require_config_authz_setting(
+        settings.config_authz.token_url,
+        "TOKEN_URL",
+    )
+    client_id = _require_config_authz_setting(
+        settings.config_authz.client_id,
+        "CLIENT_ID",
+    )
+    client_secret = _require_config_authz_setting(
+        settings.config_authz.client_secret,
+        "CLIENT_SECRET",
+    )
+    audience = (
+        settings.config_authz.audience.strip()
+        if isinstance(settings.config_authz.audience, str)
+        and settings.config_authz.audience.strip()
+        else None
+    )
+
+    token_payload = {
+        "grant_type": "client_credentials",
+        "client_id": client_id,
+        "client_secret": client_secret,
+    }
+    if audience:
+        token_payload["audience"] = audience
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=settings.config_authz.timeout_seconds,
+            verify=settings.config_authz.verify_tls,
+        ) as client:
+            response = await client.post(token_url, data=token_payload)
+    except httpx.HTTPError as exc:
+        raise AuthorizationServiceError(
+            f"Internal authz token request failed: {exc}"
+        ) from exc
+
+    if response.status_code >= 400:
+        raise AuthorizationServiceError(
+            f"Internal authz token request failed with status {response.status_code}"
+        )
+
+    try:
+        body = response.json()
+    except ValueError as exc:
+        raise AuthorizationServiceError(
+            "Internal authz token response is not valid JSON"
+        ) from exc
+
+    access_token = body.get("access_token")
+    if not isinstance(access_token, str) or not access_token.strip():
+        raise AuthorizationServiceError(
+            "Internal authz token response is missing access_token"
+        )
+    access_token = access_token.strip()
+
+    expires_in_raw = body.get("expires_in", 60)
+    try:
+        expires_in_seconds = max(int(expires_in_raw), 30)
+    except (TypeError, ValueError):
+        expires_in_seconds = 60
+
+    _S2S_TOKEN_CACHE["access_token"] = access_token
+    _S2S_TOKEN_CACHE["expires_at"] = time.time() + float(expires_in_seconds)
+    return access_token
+
+
+async def _call_internal_authz_check(
+    *,
+    principal_id: str,
+    contract_code: str,
+    data_category: str,
+) -> tuple[bool, str]:
+    authz_url = _require_config_authz_setting(settings.config_authz.url, "URL")
+
+    payload = {
+        "principal_type": "client",
+        "principal_id": principal_id,
+        "action": _AUTHZ_ACTION_INGEST_WRITE,
+        "contract_code": contract_code,
+        "data_category": data_category,
+    }
+
+    async def _send_request(bearer_token: str) -> httpx.Response:
+        try:
+            async with httpx.AsyncClient(
+                timeout=settings.config_authz.timeout_seconds,
+                verify=settings.config_authz.verify_tls,
+            ) as client:
+                return await client.post(
+                    authz_url,
+                    json=payload,
+                    headers={"Authorization": f"Bearer {bearer_token}"},
+                )
+        except httpx.HTTPError as exc:
+            raise AuthorizationServiceError(
+                f"Internal authz endpoint call failed: {exc}"
+            ) from exc
+
+    token = await _obtain_config_authz_s2s_token()
+    response = await _send_request(token)
+    if response.status_code == 401:
+        _clear_s2s_token_cache()
+        token = await _obtain_config_authz_s2s_token(force_refresh=True)
+        response = await _send_request(token)
+
+    if response.status_code != 200:
+        raise AuthorizationServiceError(
+            f"Internal authz endpoint returned status {response.status_code}"
+        )
+
+    try:
+        body = response.json()
+    except ValueError as exc:
+        raise AuthorizationServiceError(
+            "Internal authz endpoint returned invalid JSON"
+        ) from exc
+
+    allowed = body.get("allowed")
+    reason = body.get("reason")
+    if not isinstance(allowed, bool) or not isinstance(reason, str):
+        raise AuthorizationServiceError(
+            "Internal authz endpoint returned an invalid payload"
+        )
+    return allowed, reason
+
+
+async def _enforce_internal_contract_authz(
+    *,
+    principal_id: str,
+    contract_code: str,
+    data_category: str,
+) -> None:
+    allowed, reason = await _call_internal_authz_check(
+        principal_id=principal_id,
+        contract_code=contract_code,
+        data_category=data_category,
+    )
+    if not allowed:
+        raise AuthorizationDeniedError(f"Forbidden - authz denied ({reason})")
+
+
 # Create processor with optional forwarding and metadata enrichment
 processor = IngestProcessor(
     storage=storage_provider,
@@ -285,7 +471,7 @@ async def http_exception_handler(
 async def get_token(
     client_id: Annotated[str, Form()],
     client_secret: Annotated[str, Form()],
-    grant_type: Annotated[str, Form()] = "client_credentials",
+    grant_type: Annotated[str, Form()] = _TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS,
 ) -> JSONResponse:
     """Proxy a client_credentials token request to the configured identity provider.
 
@@ -301,16 +487,24 @@ async def get_token(
         The IDP token response (access_token, expires_in, …) forwarded as-is.
 
     Raises:
+        400: If grant_type is not client_credentials.
         404: If EXCHANGE_AGREEMENT__TOKEN_URL is not configured.
         Forwards any IDP error response (e.g. 401) transparently.
     """
+    normalized_grant_type = (grant_type or "").strip().lower()
+    if normalized_grant_type != _TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS:
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported grant_type. Only client_credentials is allowed.",
+        )
+
     if not settings.exchange_agreement.token_url:
         raise HTTPException(status_code=404, detail="Token endpoint not configured")
     async with httpx.AsyncClient(timeout=10.0) as client:
         response = await client.post(
             settings.exchange_agreement.token_url,
             data={
-                "grant_type": grant_type,
+                "grant_type": _TOKEN_GRANT_TYPE_CLIENT_CREDENTIALS,
                 "client_id": client_id,
                 "client_secret": client_secret,
             },
@@ -335,18 +529,35 @@ async def ingest_data(request: Request):
 
     Raises:
         401: If API key is invalid
+        403: If principal is authenticated but not authorized on contract
         400: If metadata is missing or invalid
+        503: If internal authorization service is unavailable
         500: For other errors
     """
     try:
-        # Validate API key / JWT; returns the JWT string if token-authenticated
-        jwt_token = validate_api_key(request, settings.transport.api_key)
+        # Validate API key / JWT and derive canonical caller principal from token.
+        auth_context = validate_api_key(
+            request,
+            settings.transport.api_key,
+            jwt_auth_settings=settings.jwt_auth,
+        )
+        jwt_token = auth_context.jwt_token
+        principal_id = auth_context.principal_id
 
         # Receive and parse message via carrier
         t0 = time.perf_counter()
         message = await carrier.receive(request)
         t_receive = time.perf_counter() - t0
         logger.debug("carrier.receive: %.3fs", t_receive)
+        if principal_id:
+            logger.debug("Authenticated JWT principal_id=%s", principal_id)
+            t_authz = time.perf_counter()
+            await _enforce_internal_contract_authz(
+                principal_id=principal_id,
+                contract_code=message.who,
+                data_category=message.what,
+            )
+            logger.debug("internal.authz.check: %.3fs", time.perf_counter() - t_authz)
 
         # Resolve flow from Config (if configured); reject unknown contracts/categories.
         config_deployment: str | None = None
@@ -443,7 +654,7 @@ async def ingest_data(request: Request):
         logger.info(
             "Successfully processed message: "
             "who=%s, what=%s, url=%s, "
-            "deduplicated=%s, forwarded=%s, flow_invoked=%s | "
+            "deduplicated=%s, forwarded=%s, flow_invoked=%s, principal_id=%s | "
             "timing: receive=%.3fs process=%.3fs flow=%.3fs"
             " total=%.3fs",
             message.who,
@@ -452,6 +663,7 @@ async def ingest_data(request: Request):
             result.deduplicated,
             result.forwarded,
             flow_invoked,
+            principal_id,
             t_receive,
             t_process,
             t_flow,
@@ -467,6 +679,14 @@ async def ingest_data(request: Request):
     except PermissionError as e:
         logger.warning("Authentication failed: %s", e)
         raise HTTPException(status_code=401, detail=str(e))
+
+    except AuthorizationDeniedError as e:
+        logger.warning("Authorization denied: %s", e)
+        raise HTTPException(status_code=403, detail=str(e))
+
+    except AuthorizationServiceError as e:
+        logger.error("Authorization service error: %s", e)
+        raise HTTPException(status_code=503, detail=str(e))
 
     except (MissingMetadataError, InvalidMetadataError) as e:
         logger.warning("Invalid metadata: %s", e)

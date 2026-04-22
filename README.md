@@ -14,13 +14,15 @@ between transport operators and the controlling authority.
 rpsd-ingest is the entry point of the pipeline: it exposes an HTTP API that
 operators use to submit data files. Upon receipt, the service:
 
-1. Authenticates the request with an API key.
-2. Validates the contract code against the configuration service
-   (rpsd-config), rejecting unknown or inactive contracts.
-3. Saves the content to the configured storage backend (filesystem or S3).
-4. Optionally forwards a reference to the stored content to a message broker
+1. Authenticates the request using API key or JWT bearer token.
+2. When JWT is used, validates token signature and claims
+   (`iss`, `aud`, `exp`) via Keycloak JWKS.
+3. Delegates contract-scoped authorization to `rpsd-config` through the
+   internal endpoint `/internal/authz/check`.
+4. Saves the content to the configured storage backend (filesystem or S3).
+5. Optionally forwards a reference to the stored content to a message broker
    (Kafka or RabbitMQ) for downstream processing.
-5. Optionally triggers a Prefect Flow deployment to process the data.
+6. Optionally triggers a Prefect Flow deployment to process the data.
 
 The service is built on top of the shared **rpsd-commons** library, which
 provides reusable transport, storage, and flow components.
@@ -32,7 +34,7 @@ rpsd-ingest/
 ├── src/
 │   └── rpsd_ingest/
 │       ├── main.py                    # FastAPI application and endpoints
-│       ├── auth.py                    # API key validation
+│       ├── auth.py                    # API key/JWT validation
 │       ├── settings.py                # Pydantic-settings configuration
 │       └── models/
 │           └── exchange_agreement.py  # API response models for rpsd-config
@@ -128,7 +130,17 @@ Configuration is loaded from environment variables. Copy `.env.development` to
 | `FLOW__DEPLOYMENT` | — | Prefect deployment (`flow/deployment`) |
 | `FLOW__TIMEOUT` | `0` | `0` = fire-and-forget; positive = wait seconds |
 | `PREFECT_API_URL` | — | Prefect API URL (required when flow enabled) |
+| `EXCHANGE_AGREEMENT__TOKEN_URL` | — | Upstream token endpoint used by `/token` proxy |
 | `EXCHANGE_AGREEMENT__FLOW_PROFILE_URL` | — | rpsd-config contract API URL template |
+| `JWT_AUTH__ENABLED` | `false` | Enable strict JWT validation for bearer tokens |
+| `JWT_AUTH__ISSUER_URL` | — | Expected token issuer (`iss`) |
+| `JWT_AUTH__AUDIENCE` | — | Expected token audience (`aud`) for ingest |
+| `JWT_AUTH__JWKS_URL` | — | JWKS URL used for signature verification |
+| `CONFIG_AUTHZ__URL` | — | Internal authz endpoint in `rpsd-config` |
+| `CONFIG_AUTHZ__TOKEN_URL` | — | Token endpoint for ingest→config service account |
+| `CONFIG_AUTHZ__CLIENT_ID` | — | Service client id for ingest→config |
+| `CONFIG_AUTHZ__CLIENT_SECRET` | — | Service client secret for ingest→config |
+| `CONFIG_AUTHZ__AUDIENCE` | — | Audience requested for ingest→config token |
 | `LOG_LEVEL` | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 
 See `.env.development` for full documentation of every variable.
@@ -137,11 +149,18 @@ See `.env.development` for full documentation of every variable.
 
 | Method | Path | Description |
 |---|---|---|
+| `POST` | `/token` | Proxy OAuth2 `client_credentials` token request |
 | `POST` | `/ingest` | Submit a data file for ingestion |
 | `GET` | `/health` | Service health check |
 
-Authentication uses an API key supplied in the `Authorization: Bearer <key>`
-or `X-API-Key: <key>` request header.
+Authentication modes:
+
+1. API key mode (legacy/compatibility): `Authorization: Bearer <api-key>` or
+   `X-API-Key: <api-key>`.
+2. JWT mode (recommended for M2M): `Authorization: Bearer <jwt>`, with strict
+   validation and internal contract-scoped authz check.
+
+`POST /token` accepts only `grant_type=client_credentials`.
 
 ## Running tests
 
