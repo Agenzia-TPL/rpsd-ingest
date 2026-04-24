@@ -128,7 +128,7 @@ Configuration is loaded from environment variables. Copy `.env.development` to
 | `FLOW__DEPLOYMENT` | — | Prefect deployment (`flow/deployment`) |
 | `FLOW__TIMEOUT` | `0` | `0` = fire-and-forget; positive = wait seconds |
 | `PREFECT_API_URL` | — | Prefect API URL (required when flow enabled) |
-| `EXCHANGE_AGREEMENT__FLOW_PROFILE_URL` | — | rpsd-config contract API URL template |
+| `EXCHANGE_AGREEMENT__FLOW_PROFILE_URL` | — | rpsd-config contract API URL template; **required in production when JWT auth is used** (Config service performs full JWT validation) |
 | `LOG_LEVEL` | `INFO` | Log level: `DEBUG`, `INFO`, `WARNING`, `ERROR` |
 
 See `.env.development` for full documentation of every variable.
