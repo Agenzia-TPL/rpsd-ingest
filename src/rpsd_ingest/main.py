@@ -170,10 +170,10 @@ async def fetch_flow_profile(
     async with httpx.AsyncClient(timeout=10) as client:
         response = await client.get(url, headers=headers)
 
-    if response.status_code == 404:
-        raise ValueError(f"Unknown contract code: {who!r}")
-
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as e:
+        raise HTTPException(status_code=e.response.status_code, detail=str(e)) from e
 
     data = ContractFlowProfileResponse.model_validate(response.json())
 
@@ -430,6 +430,9 @@ async def ingest_data(request: Request):
     except PermissionError as e:
         logger.warning("Authentication failed: %s", e)
         raise HTTPException(status_code=401, detail=str(e))
+
+    except HTTPException:
+        raise
 
     except (MissingMetadataError, InvalidMetadataError) as e:
         logger.warning("Invalid metadata: %s", e)
